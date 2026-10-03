@@ -54,7 +54,8 @@ export const useImportStore = create<ImportState>((set, get) => ({
     try {
       const summary = await importer.importFiles(sources, {
         token,
-        simulateCrashAfterMove: options.simulateCrash,
+        // Hard-wired off in production builds, whatever the caller passes.
+        simulateCrashAfterMove: __DEV__ && options.simulateCrash === true,
         onProgress: (index, step) => updateItem(set, index, { step }),
       });
       set((state) => ({

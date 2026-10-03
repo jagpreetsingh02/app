@@ -5,6 +5,7 @@ import { openArchiveDatabase } from './data/sqlite';
 import { SqliteTagRepository } from './data/TagRepository';
 import { ArchiveService } from './services/ArchiveService';
 import { AvailabilityService } from './services/AvailabilityService';
+import { DebugService } from './services/DebugService';
 import { Mutex } from './services/concurrency';
 import { ImportService } from './services/ImportService';
 import { OpenService } from './services/OpenService';
@@ -34,6 +35,8 @@ export interface AppServices {
   /** Pickers wait for startup cleanup first: it empties the picker cache folder. */
   pickFiles: () => Promise<ImportSource[] | null>;
   pickFile: () => Promise<ImportSource | null>;
+  /** Development builds only; always null in production. */
+  debug: DebugService | null;
   /** Startup cleanup, started in the background; resolves when it is done. */
   reconciliation: Promise<ReconciliationReport | null>;
 }
@@ -73,6 +76,7 @@ export async function createAppServices(): Promise<AppServices> {
       await reconciliation;
       return pickSingleSource();
     },
+    debug: __DEV__ ? new DebugService({ files, store }) : null,
     reconciliation,
   };
 }

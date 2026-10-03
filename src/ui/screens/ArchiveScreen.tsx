@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { errorMessage } from '../../domain/errors';
 import { FILE_CATEGORIES, FILE_STATUSES, type ArchiveFileWithTags, type FileCategory } from '../../domain/types';
 import { useArchiveVersion } from '../../state/archiveStore';
+import { useDebugStore } from '../../state/debugStore';
 import { SORT_OPTIONS, hasActiveFilters, toArchiveQuery, useFilterStore } from '../../state/filterStore';
 import { useImportStore } from '../../state/importStore';
 import { Button } from '../components/Button';
@@ -52,7 +53,12 @@ export function ArchiveScreen() {
   const onImport = async () => {
     try {
       const sources = await services.pickFiles();
-      if (sources && sources.length > 0) void startImport(services.importer, sources);
+      if (sources && sources.length > 0) {
+        const debug = useDebugStore.getState();
+        const simulateCrash = __DEV__ && debug.crashNextImport;
+        if (simulateCrash) debug.setCrashNextImport(false); // one shot
+        void startImport(services.importer, sources, { simulateCrash });
+      }
     } catch (err) {
       Alert.alert('Could not open the file picker', errorMessage(err));
     }
