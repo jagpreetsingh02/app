@@ -1,5 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { setBackgroundColorAsync } from 'expo-system-ui';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AvailabilityMonitor } from '../src/ui/AvailabilityMonitor';
@@ -8,6 +10,12 @@ import { useTheme } from '../src/ui/theme/theme';
 
 export default function RootLayout() {
   const { colors, dark } = useTheme();
+
+  // Native root view colour (seen behind screen transitions and the keyboard);
+  // without this, dark mode flashes white.
+  useEffect(() => {
+    setBackgroundColorAsync(colors.background).catch(() => undefined);
+  }, [colors.background]);
 
   return (
     <SafeAreaProvider>
@@ -19,6 +27,7 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
             headerShadowVisible: false,
+            headerTitleStyle: { fontWeight: '600' },
             contentStyle: { backgroundColor: colors.background },
           }}
         >
