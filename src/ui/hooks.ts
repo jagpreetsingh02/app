@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 /** Returns `value` once it has stopped changing for `delayMs`. */
 export function useDebounced<T>(value: T, delayMs: number): T {
@@ -20,8 +20,13 @@ export type LoadState<T> =
  * (fast typing must not let an older, slower query overwrite a newer one).
  * Keeps showing the previous data while reloading, to avoid flicker.
  */
-export function useLoader<T>(load: () => Promise<T>, deps: readonly unknown[]): LoadState<T> {
+export function useLoader<T>(
+  load: () => Promise<T>,
+  deps: readonly unknown[],
+): LoadState<T> & { reload: () => void } {
   const [state, setState] = useState<LoadState<T>>({ kind: 'loading', data: null });
+  const [attempt, setAttempt] = useState(0);
+  const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     let current = true;
@@ -39,7 +44,7 @@ export function useLoader<T>(load: () => Promise<T>, deps: readonly unknown[]): 
     return () => {
       current = false;
     };
-  }, deps);
+  }, [...deps, attempt]);
 
-  return state;
+  return { ...state, reload };
 }
