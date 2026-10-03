@@ -26,12 +26,14 @@ export const REMOVE_EXPLANATION =
 export function FileDetailScreen({ id }: { id: string }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { archive, tags } = useServices();
+  const { archive, tags, opener, availability } = useServices();
   const version = useArchiveVersion((s) => s.version);
   const detail = useLoader(() => archive.getDetail(id), [archive, id, version]);
   const [renaming, setRenaming] = useState(false);
   const [editingTags, setEditingTags] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   if (detail.data === null) {
     if (detail.kind === 'loading') {
@@ -70,6 +72,49 @@ export function FileDetailScreen({ id }: { id: string }) {
       },
     ]);
 
+  const open = async () => {
+    setOpening(true);
+    try {
+      const result = await opener.open(file.id);
+      if (result.file.status !== file.status) notifyArchiveChanged();
+      switch (result.kind) {
+        case 'show-in-app':
+          router.push(`/viewer/${file.id}`);
+          break;
+        case 'opened':
+          break;
+        case 'unavailable':
+          Alert.alert('File not available', result.message);
+          break;
+        case 'no-viewer':
+          Alert.alert('No app to open this file', result.message);
+          break;
+        case 'failed':
+          Alert.alert('Could not open the file', result.message);
+          break;
+      }
+    } catch (err) {
+      Alert.alert('Could not open the file', errorMessage(err));
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      const checked = await availability.checkFile(file.id);
+      notifyArchiveChanged();
+      if (checked && checked.result.status !== 'available' && checked.result.reason) {
+        Alert.alert(STATUS_LABEL[checked.result.status], checked.result.reason);
+      }
+    } catch (err) {
+      Alert.alert('Could not check the file', errorMessage(err));
+    } finally {
+      setChecking(false);
+    }
+  };
+
   const removeTag = async (tagId: string) => {
     try {
       await tags.unassign(file.id, tagId);
@@ -91,7 +136,20 @@ export function FileDetailScreen({ id }: { id: string }) {
             {file.displayName}
           </Text>
           <StatusBadge status={file.status} />
-          <Button label="Rename" icon="pencil" variant="secondary" onPress={() => setRenaming(true)} />
+          <View style={styles.actions}>
+            <View style={styles.action}>
+              <Button
+                label="Open"
+                icon="open-outline"
+                onPress={open}
+                busy={opening}
+                accessibilityHint={file.category === 'image' ? 'Shows the image' : 'Opens the file in another app'}
+              />
+            </View>
+            <View style={styles.action}>
+              <Button label="Rename" icon="pencil" variant="secondary" onPress={() => setRenaming(true)} />
+            </View>
+          </View>
         </View>
 
         {file.status !== 'available' ? (
@@ -123,6 +181,7 @@ export function FileDetailScreen({ id }: { id: string }) {
           />
           <Field label="Last known modification" value={formatDateTime(file.lastKnownModifiedAt)} />
           <Field label="Availability" value={`${STATUS_LABEL[file.status]} · checked ${formatDateTime(file.statusCheckedAt)}`} />
+          <Button label="Check now" icon="refresh" variant="secondary" onPress={checkNow} busy={checking} />
           <Field label="Original name" value={file.originalName} />
           <Field label="Stored at" value={file.storagePath} mono />
           <Field label={hashLabel} value={hashValue} mono last />
@@ -193,6 +252,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   content: { padding: spacing.lg, gap: spacing.xl },
   hero: { alignItems: 'center', gap: spacing.md },
+  actions: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch' },
+  action: { flex: 1 },
   name: { textAlign: 'center' },
   banner: { padding: spacing.lg, borderRadius: radius.md },
   section: { gap: spacing.sm },

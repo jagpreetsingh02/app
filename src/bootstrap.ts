@@ -7,11 +7,13 @@ import { ArchiveService } from './services/ArchiveService';
 import { AvailabilityService } from './services/AvailabilityService';
 import { Mutex } from './services/concurrency';
 import { ImportService } from './services/ImportService';
+import { OpenService } from './services/OpenService';
 import { ReconciliationService, type ReconciliationReport } from './services/ReconciliationService';
 import { SearchService } from './services/SearchService';
 import { TagService } from './services/TagService';
 import { pickImportSources } from './storage/documentPicker';
 import { ExpoFileStore } from './storage/ExpoFileStore';
+import { ExpoExternalViewer } from './storage/ExternalViewer';
 import type { ImportSource } from './domain/types';
 
 /**
@@ -26,6 +28,7 @@ export interface AppServices {
   search: SearchService;
   tags: TagService;
   importer: ImportService;
+  opener: OpenService;
   /** Waits for startup cleanup first: it empties the picker cache folder. */
   pickFiles: () => Promise<ImportSource[] | null>;
   /** Startup cleanup, started in the background; resolves when it is done. */
@@ -49,9 +52,12 @@ export async function createAppServices(): Promise<AppServices> {
     return null;
   });
 
+  const availability = new AvailabilityService({ files, store, now: Date.now });
+
   return {
     archive: new ArchiveService({ files, tags, store }),
-    availability: new AvailabilityService({ files, store, now: Date.now }),
+    availability,
+    opener: new OpenService({ availability, viewer: new ExpoExternalViewer() }),
     search: new SearchService({ files, tags }),
     tags: new TagService({ tags, newId: randomUUID, now: Date.now }),
     importer: new ImportService({ store, files, archiveLock, newId: randomUUID, now: Date.now }),

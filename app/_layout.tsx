@@ -26,6 +26,7 @@ export default function RootLayout() {
           <Stack.Screen name="file/[id]" options={{ title: '' }} />
           <Stack.Screen name="tags" options={{ title: 'Tags' }} />
           <Stack.Screen name="integrity" options={{ title: 'Integrity' }} />
+          <Stack.Screen name="viewer/[id]" options={{ title: '' }} />
         </Stack>
       </ServicesProvider>
     </SafeAreaProvider>
