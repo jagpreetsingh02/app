@@ -49,6 +49,36 @@ describe('SqliteFileRepository', () => {
   });
 });
 
+describe('SqliteFileRepository status updates', () => {
+  it('updates only the status columns and keeps the old mtime when none is given', async () => {
+    const { files } = await setup();
+    const original = makeFile('f1', { lastKnownModifiedAt: 500, statusCheckedAt: 100 });
+    await files.insert(original);
+
+    expect(await files.updateStatus({ id: 'f1', status: 'missing', checkedAt: 200, lastKnownModifiedAt: null })).toBe(true);
+    expect(await files.getById('f1')).toEqual({ ...original, status: 'missing', statusCheckedAt: 200 });
+
+    await files.updateStatus({ id: 'f1', status: 'available', checkedAt: 300, lastKnownModifiedAt: 900 });
+    expect(await files.getById('f1')).toMatchObject({ status: 'available', statusCheckedAt: 300, lastKnownModifiedAt: 900 });
+  });
+
+  it('ignores a result older than the one already recorded', async () => {
+    const { files } = await setup();
+    await files.insert(makeFile('f1', { statusCheckedAt: 1000 }));
+    expect(await files.updateStatus({ id: 'f1', status: 'missing', checkedAt: 999, lastKnownModifiedAt: null })).toBe(false);
+    expect((await files.getById('f1'))?.status).toBe('available');
+  });
+
+  it('pages through all rows by id', async () => {
+    const { files } = await setup();
+    for (const id of ['c', 'a', 'e', 'b', 'd']) await files.insert(makeFile(id));
+    const page1 = await files.listPage(null, 2);
+    const page2 = await files.listPage(page1[1].id, 2);
+    const page3 = await files.listPage(page2[1].id, 2);
+    expect([page1, page2, page3].map((p) => p.map((f) => f.id))).toEqual([['a', 'b'], ['c', 'd'], ['e']]);
+  });
+});
+
 describe('SqliteTagRepository', () => {
   it('assigns, counts, unassigns and cascades on delete', async () => {
     const { files, tags } = await setup();
