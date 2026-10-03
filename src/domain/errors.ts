@@ -35,6 +35,18 @@ export class CancelledError extends Error {
   }
 }
 
+/**
+ * Debug-only: emulates the process dying between "move into archive/" and
+ * "insert DB row". The pipeline deliberately skips cleanup for this error so
+ * the orphaned file is left behind exactly as a real crash would leave it.
+ */
+export class SimulatedCrashError extends Error {
+  constructor() {
+    super('Simulated crash between file move and database insert');
+    this.name = 'SimulatedCrashError';
+  }
+}
+
 export class NotFoundError extends Error {
   constructor(what: string) {
     super(`${what} not found`);

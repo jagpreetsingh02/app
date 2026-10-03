@@ -1,24 +1,51 @@
-import type { SqlDatabase } from './data/SqlDatabase';
+import { randomUUID } from 'expo-crypto';
+
+import { SqliteFileRepository } from './data/FileRepository';
 import { openArchiveDatabase } from './data/sqlite';
+import { SqliteTagRepository } from './data/TagRepository';
+import { ArchiveService } from './services/ArchiveService';
+import { Mutex } from './services/concurrency';
+import { ImportService } from './services/ImportService';
+import { ReconciliationService, type ReconciliationReport } from './services/ReconciliationService';
+import { pickImportSources } from './storage/documentPicker';
 import { ExpoFileStore } from './storage/ExpoFileStore';
-import type { FileStore } from './storage/FileStore';
+import type { ImportSource } from './domain/types';
 
 /**
  * Composition root: the only place that knows about concrete implementations.
- * It wires SQLite and the Expo file system into the services, and the UI only
- * ever sees the resulting `AppServices` object.
+ * It wires SQLite and the Expo file system into the services; the UI only
+ * ever sees the resulting `AppServices` object (no DB handle, no file paths).
  */
 
 export interface AppServices {
-  fileStore: FileStore;
+  archive: ArchiveService;
+  importer: ImportService;
+  pickFiles: () => Promise<ImportSource[] | null>;
+  /** Startup cleanup, started in the background; resolves when it is done. */
+  reconciliation: Promise<ReconciliationReport | null>;
 }
 
-// Kept module-private so UI code cannot reach the raw database handle.
-let database: SqlDatabase | null = null;
-
 export async function createAppServices(): Promise<AppServices> {
-  database ??= await openArchiveDatabase();
-  const fileStore = new ExpoFileStore();
-  await fileStore.ensureDirectories();
-  return { fileStore };
+  const db = await openArchiveDatabase();
+  const store = new ExpoFileStore();
+  await store.ensureDirectories();
+
+  const files = new SqliteFileRepository(db);
+  const tags = new SqliteTagRepository(db);
+  const archiveLock = new Mutex();
+
+  const reconciler = new ReconciliationService({ store, files, archiveLock });
+  // Not awaited: first render must not wait for disk cleanup. Imports queue
+  // behind it on archiveLock, so they can never race it.
+  const reconciliation = reconciler.run().catch((err: unknown) => {
+    console.warn('Startup reconciliation failed; will retry next launch', err);
+    return null;
+  });
+
+  return {
+    archive: new ArchiveService({ files, tags }),
+    importer: new ImportService({ store, files, archiveLock, newId: randomUUID, now: Date.now }),
+    pickFiles: pickImportSources,
+    reconciliation,
+  };
 }
