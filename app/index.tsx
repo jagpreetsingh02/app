@@ -13,6 +13,13 @@ export default function ArchiveRoute() {
         options={{
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+              {__DEV__ ? (
+                <Link href="/debug" asChild>
+                  <Pressable accessibilityLabel="Debug tools" hitSlop={8} style={{ minWidth: TOUCH_TARGET, alignItems: 'center' }}>
+                    <Ionicons name="bug-outline" size={22} color={colors.text} />
+                  </Pressable>
+                </Link>
+              ) : null}
               <Link href="/tags" asChild>
                 <Pressable accessibilityLabel="Tags" hitSlop={8} style={{ minWidth: TOUCH_TARGET, alignItems: 'center' }}>
                   <Ionicons name="pricetags-outline" size={22} color={colors.text} />
