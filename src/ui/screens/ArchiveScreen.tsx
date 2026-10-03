@@ -10,12 +10,13 @@ import { useArchiveVersion } from '../../state/archiveStore';
 import { useDebugStore } from '../../state/debugStore';
 import { SORT_OPTIONS, hasActiveFilters, toArchiveQuery, useFilterStore } from '../../state/filterStore';
 import { useImportStore } from '../../state/importStore';
-import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { FileRow } from '../components/FileRow';
+import { IconButton } from '../components/IconButton';
 import { ImportSheet } from '../components/ImportSheet';
 import { OptionSheet } from '../components/OptionSheet';
-import { STATUS_LABEL } from '../components/StatusBadge';
+import { STATUS_ICON, STATUS_LABEL } from '../components/StatusBadge';
+import { StateView } from '../components/StateView';
 import { CATEGORY_ICON } from '../format';
 import { useDebounced, useLoader } from '../hooks';
 import { useServices } from '../ServicesProvider';
@@ -80,19 +81,16 @@ export function ArchiveScreen() {
             accessibilityLabel="Search by file name or tag"
           />
           {filters.text ? (
-            <Pressable onPress={() => filters.setText('')} hitSlop={10} accessibilityLabel="Clear search">
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-            </Pressable>
+            <IconButton icon="close-circle" size={18} color={colors.textMuted} label="Clear search" onPress={() => filters.setText('')} />
           ) : null}
         </View>
-        <Pressable
+        <IconButton
+          icon="swap-vertical"
+          label={`Sort, currently ${filters.sort.label}`}
+          hint="Changes the order of the list"
+          bordered
           onPress={() => setSortOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Sort: ${filters.sort.label}`}
-          style={[styles.sortButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        >
-          <Ionicons name="swap-vertical" size={20} color={colors.text} />
-        </Pressable>
+        />
       </View>
 
       <ScrollView
@@ -115,6 +113,7 @@ export function ArchiveScreen() {
           <Chip
             key={status}
             label={STATUS_LABEL[status]}
+            icon={STATUS_ICON[status]}
             selected={filters.statuses.includes(status)}
             onPress={() => filters.toggleStatus(status)}
           />
@@ -127,7 +126,7 @@ export function ArchiveScreen() {
         </Text>
         {filters.tag ? <Chip label={`#${filters.tag.name}`} onRemove={() => filters.setTag(null)} /> : null}
         {filtered ? (
-          <Pressable onPress={filters.clear} hitSlop={8} accessibilityRole="button">
+          <Pressable onPress={filters.clear} accessibilityRole="button" style={styles.textButton}>
             <Text style={[type.label, { color: colors.accent }]}>Clear filters</Text>
           </Pressable>
         ) : null}
@@ -136,11 +135,13 @@ export function ArchiveScreen() {
       {files === null && result.kind !== 'error' ? (
         <ActivityIndicator style={styles.center} color={colors.accent} accessibilityLabel="Loading archive" />
       ) : result.kind === 'error' && !files ? (
-        <View style={styles.center}>
-          <Text style={[type.body, { color: colors.danger, textAlign: 'center' }]}>
-            Could not load the archive: {result.message}
-          </Text>
-        </View>
+        <StateView
+          icon="cloud-offline-outline"
+          tone="danger"
+          title="Couldn’t load the archive"
+          body={result.message}
+          action={{ label: 'Try again', icon: 'refresh', onPress: result.reload }}
+        />
       ) : (
         <FlatList
           data={files ?? []}
@@ -193,58 +194,42 @@ function Separator() {
 }
 
 function EmptyArchive() {
-  const { colors } = useTheme();
   return (
-    <View style={styles.empty}>
-      <View style={[styles.emptyIcon, { backgroundColor: colors.accentSoft }]}>
-        <Ionicons name="archive-outline" size={32} color={colors.accent} />
-      </View>
-      <Text style={[type.heading, { color: colors.text }]}>Your archive is empty</Text>
-      <Text style={[type.body, styles.emptyBody, { color: colors.textMuted }]}>
-        Import images, PDFs and documents. The archive keeps its own private copy, so your original
-        files are never changed or deleted.
-      </Text>
-    </View>
+    <StateView
+      icon="archive-outline"
+      tone="accent"
+      title="Your archive is empty"
+      body="Tap Import to add images, PDFs and documents. The archive keeps its own private copy, so your original files are never changed or deleted."
+    />
   );
 }
 
 function NoResults({ onClear }: { onClear: () => void }) {
-  const { colors } = useTheme();
   return (
-    <View style={styles.empty}>
-      <Ionicons name="search-outline" size={32} color={colors.textMuted} />
-      <Text style={[type.heading, { color: colors.text }]}>No matching files</Text>
-      <Text style={[type.body, styles.emptyBody, { color: colors.textMuted }]}>
-        Try a different name or tag, or remove some filters.
-      </Text>
-      <Button label="Clear filters" variant="secondary" onPress={onClear} />
-    </View>
+    <StateView
+      icon="search-outline"
+      title="No matching files"
+      body="Try a different name or tag, or remove some filters."
+      action={{ label: 'Clear filters', onPress: onClear }}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  searchRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   search: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     minHeight: TOUCH_TARGET,
-    paddingHorizontal: spacing.md,
+    paddingLeft: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
   },
   searchInput: { flex: 1, paddingVertical: spacing.sm },
-  sortButton: {
-    width: TOUCH_TARGET,
-    height: TOUCH_TARGET,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   chipScroller: { flexGrow: 0 },
   chips: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, alignItems: 'center' },
   divider: { width: 1, height: 24, marginHorizontal: spacing.xs },
@@ -256,6 +241,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   summaryText: { flex: 1 },
+  textButton: { minHeight: TOUCH_TARGET, justifyContent: 'center', paddingHorizontal: spacing.xs },
   list: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, flexGrow: 1 },
   fab: {
     position: 'absolute',
@@ -273,7 +259,4 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.xxl },
-  emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
-  emptyBody: { textAlign: 'center' },
 });

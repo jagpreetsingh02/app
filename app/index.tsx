@@ -1,35 +1,24 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Link, Stack } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Stack, router } from 'expo-router';
+import { View } from 'react-native';
 
+import { IconButton } from '../src/ui/components/IconButton';
 import { ArchiveScreen } from '../src/ui/screens/ArchiveScreen';
-import { spacing, useTheme, TOUCH_TARGET } from '../src/ui/theme/theme';
 
 export default function ArchiveRoute() {
-  const { colors } = useTheme();
   return (
     <>
       <Stack.Screen
         options={{
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              {__DEV__ ? (
-                <Link href="/debug" asChild>
-                  <Pressable accessibilityLabel="Debug tools" hitSlop={8} style={{ minWidth: TOUCH_TARGET, alignItems: 'center' }}>
-                    <Ionicons name="bug-outline" size={22} color={colors.text} />
-                  </Pressable>
-                </Link>
-              ) : null}
-              <Link href="/tags" asChild>
-                <Pressable accessibilityLabel="Tags" hitSlop={8} style={{ minWidth: TOUCH_TARGET, alignItems: 'center' }}>
-                  <Ionicons name="pricetags-outline" size={22} color={colors.text} />
-                </Pressable>
-              </Link>
-              <Link href="/integrity" asChild>
-                <Pressable accessibilityLabel="Integrity scan" hitSlop={8} style={{ minWidth: TOUCH_TARGET, alignItems: 'center' }}>
-                  <Ionicons name="shield-checkmark-outline" size={22} color={colors.text} />
-                </Pressable>
-              </Link>
+            <View style={{ flexDirection: 'row' }}>
+              {__DEV__ ? <IconButton icon="bug-outline" label="Debug tools" onPress={() => router.push('/debug')} /> : null}
+              <IconButton icon="pricetags-outline" label="Tags" hint="Create, delete and browse tags" onPress={() => router.push('/tags')} />
+              <IconButton
+                icon="shield-checkmark-outline"
+                label="Integrity scan"
+                hint="Checks every archived file"
+                onPress={() => router.push('/integrity')}
+              />
             </View>
           ),
         }}

@@ -59,8 +59,8 @@ export function TagPills({ names, max = 3 }: { names: string[]; max?: number }) 
   return (
     <View style={styles.pills}>
       {shown.map((name) => (
-        <View key={name} style={[styles.pill, { backgroundColor: colors.surfaceAlt }]}>
-          <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>
+        <View key={name} style={[styles.pill, { backgroundColor: colors.accentSoft }]}>
+          <Text style={[type.caption, styles.pillText, { color: colors.accent }]} numberOfLines={1}>
             #{name}
           </Text>
         </View>
@@ -83,4 +83,5 @@ const styles = StyleSheet.create({
   },
   pills: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' },
   pill: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.pill, maxWidth: 140 },
+  pillText: { fontWeight: '500' },
 });

@@ -10,6 +10,12 @@ export const STATUS_LABEL: Record<FileStatus, string> = {
   unreadable: 'Unreadable',
 };
 
+export const STATUS_ICON: Record<FileStatus, 'checkmark-circle-outline' | 'alert-circle-outline' | 'warning-outline'> = {
+  available: 'checkmark-circle-outline',
+  missing: 'alert-circle-outline',
+  unreadable: 'warning-outline',
+};
+
 /** Warning badge; renders nothing for healthy entries. */
 export function StatusBadge({ status }: { status: FileStatus }) {
   const { colors } = useTheme();

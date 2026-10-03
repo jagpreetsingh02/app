@@ -44,18 +44,16 @@ export const FileRow = memo(function FileRow({
     >
       <FileThumb file={file} />
       <View style={styles.body}>
-        <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
-          {file.displayName}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={[type.bodyStrong, styles.name, { color: colors.text }]} numberOfLines={1}>
+            {file.displayName}
+          </Text>
+          <StatusBadge status={file.status} />
+        </View>
         <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>
           {meta}
         </Text>
-        {flagged || tagNames.length > 0 ? (
-          <View style={styles.extras}>
-            <StatusBadge status={file.status} />
-            <TagPills names={tagNames} />
-          </View>
-        ) : null}
+        {tagNames.length > 0 ? <TagPills names={tagNames} /> : null}
       </View>
     </Pressable>
   );
@@ -70,6 +68,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     minHeight: 68,
   },
-  body: { flex: 1, gap: 3 },
-  extras: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', marginTop: 2 },
+  body: { flex: 1, gap: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  name: { flex: 1 },
 });
