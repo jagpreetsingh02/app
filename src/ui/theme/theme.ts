@@ -33,9 +33,9 @@ const light: Palette = {
   accentSoft: '#E6ECFD',
   danger: '#C93636',
   dangerSoft: '#FCEAEA',
-  warning: '#A86A12',
+  warning: '#996010',
   warningSoft: '#FCF1DE',
-  success: '#22814F',
+  success: '#207B4B',
   successSoft: '#E3F4EA',
   overlay: 'rgba(10, 11, 14, 0.45)',
 };
