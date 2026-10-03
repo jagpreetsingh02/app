@@ -36,7 +36,7 @@ export default function RootLayout() {
           <Stack.Screen name="tags" options={{ title: 'Tags' }} />
           <Stack.Screen name="integrity" options={{ title: 'Integrity' }} />
           <Stack.Screen name="viewer/[id]" options={{ title: '' }} />
-          <Stack.Screen name="debug" options={{ title: 'Debug tools' }} />
+          {__DEV__ ? <Stack.Screen name="debug" options={{ title: 'Debug tools' }} /> : null}
         </Stack>
       </ServicesProvider>
     </SafeAreaProvider>
