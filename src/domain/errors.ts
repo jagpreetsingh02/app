@@ -47,6 +47,14 @@ export class SimulatedCrashError extends Error {
   }
 }
 
+/** The file is fine, but no installed app can display this type of file. */
+export class NoViewerAppError extends Error {
+  constructor(mimeType: string) {
+    super(`No app on this device can open ${mimeType} files.`);
+    this.name = 'NoViewerAppError';
+  }
+}
+
 export class NotFoundError extends Error {
   constructor(what: string) {
     super(`${what} not found`);
