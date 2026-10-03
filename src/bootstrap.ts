@@ -4,6 +4,7 @@ import { SqliteFileRepository } from './data/FileRepository';
 import { openArchiveDatabase } from './data/sqlite';
 import { SqliteTagRepository } from './data/TagRepository';
 import { ArchiveService } from './services/ArchiveService';
+import { AvailabilityService } from './services/AvailabilityService';
 import { Mutex } from './services/concurrency';
 import { ImportService } from './services/ImportService';
 import { ReconciliationService, type ReconciliationReport } from './services/ReconciliationService';
@@ -21,6 +22,7 @@ import type { ImportSource } from './domain/types';
 
 export interface AppServices {
   archive: ArchiveService;
+  availability: AvailabilityService;
   search: SearchService;
   tags: TagService;
   importer: ImportService;
@@ -49,6 +51,7 @@ export async function createAppServices(): Promise<AppServices> {
 
   return {
     archive: new ArchiveService({ files, tags, store }),
+    availability: new AvailabilityService({ files, store, now: Date.now }),
     search: new SearchService({ files, tags }),
     tags: new TagService({ tags, newId: randomUUID, now: Date.now }),
     importer: new ImportService({ store, files, archiveLock, newId: randomUUID, now: Date.now }),

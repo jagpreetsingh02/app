@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AvailabilityMonitor } from '../src/ui/AvailabilityMonitor';
 import { ServicesProvider } from '../src/ui/ServicesProvider';
 import { useTheme } from '../src/ui/theme/theme';
 
@@ -12,6 +13,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style={dark ? 'light' : 'dark'} />
       <ServicesProvider>
+        <AvailabilityMonitor />
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: colors.background },
