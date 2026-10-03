@@ -38,7 +38,7 @@ export function ImportSheet() {
       animationType="slide"
       statusBarTranslucent
       // Android back button: only closes once the import has finished.
-      onRequestClose={() => !running && dismiss()}
+      onRequestClose={() => !running && dismiss(importer)}
     >
       <View style={[styles.backdrop, { backgroundColor: colors.overlay }]}>
         <View
@@ -86,7 +86,7 @@ export function ImportSheet() {
             </Pressable>
           ) : (
             <Pressable
-              onPress={dismiss}
+              onPress={() => dismiss(importer)}
               accessibilityRole="button"
               style={[styles.button, { backgroundColor: colors.accent, borderColor: colors.accent }]}
             >

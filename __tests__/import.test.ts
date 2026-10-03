@@ -6,7 +6,7 @@ import { ImportService } from '../src/services/ImportService';
 import { ReconciliationService } from '../src/services/ReconciliationService';
 import { ARCHIVE_DIR, STAGING_DIR } from '../src/storage/FileStore';
 import { FlakyFileRepository } from './fakes/FlakyFileRepository';
-import { MemoryFileStore } from './fakes/MemoryFileStore';
+import { MemoryFileStore, PICKER_CACHE } from './fakes/MemoryFileStore';
 import { createTestDatabase } from './support/nodeSqlite';
 
 async function setup() {
@@ -25,7 +25,7 @@ async function setup() {
   const reconciliation = new ReconciliationService({ store, files, archiveLock });
 
   const source = (name: string, content: string, mimeType: string | null = null): ImportSource => {
-    const uri = `file:///picker-cache/${name}`;
+    const uri = `${PICKER_CACHE}${name}`;
     store.addSource(uri, content);
     return { uri, name, mimeType, size: content.length, lastModified: 1_600_000_000_000 };
   };
@@ -252,7 +252,7 @@ describe('crash recovery', () => {
 
     const report = await t.reconciliation.run();
 
-    expect(report).toEqual({ stagingRemoved: 1, orphansRemoved: 1 });
+    expect(report).toEqual({ stagingRemoved: 1, orphansRemoved: 1, pickerCacheCleared: 0 });
     expect(t.store.paths()).toEqual([kept.storagePath]);
     expect(await t.files.getById(kept.id)).not.toBeNull();
   });
@@ -271,7 +271,7 @@ describe('crash recovery', () => {
     const report = await cleanup!;
 
     expect(summary.imported).toBe(1);
-    expect(report).toEqual({ stagingRemoved: 0, orphansRemoved: 0 });
+    expect(report).toEqual({ stagingRemoved: 0, orphansRemoved: 0, pickerCacheCleared: 0 });
     await t.expectConsistent();
   });
 });

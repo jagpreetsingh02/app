@@ -7,6 +7,8 @@ import { ArchiveService } from './services/ArchiveService';
 import { Mutex } from './services/concurrency';
 import { ImportService } from './services/ImportService';
 import { ReconciliationService, type ReconciliationReport } from './services/ReconciliationService';
+import { SearchService } from './services/SearchService';
+import { TagService } from './services/TagService';
 import { pickImportSources } from './storage/documentPicker';
 import { ExpoFileStore } from './storage/ExpoFileStore';
 import type { ImportSource } from './domain/types';
@@ -19,7 +21,10 @@ import type { ImportSource } from './domain/types';
 
 export interface AppServices {
   archive: ArchiveService;
+  search: SearchService;
+  tags: TagService;
   importer: ImportService;
+  /** Waits for startup cleanup first: it empties the picker cache folder. */
   pickFiles: () => Promise<ImportSource[] | null>;
   /** Startup cleanup, started in the background; resolves when it is done. */
   reconciliation: Promise<ReconciliationReport | null>;
@@ -43,9 +48,14 @@ export async function createAppServices(): Promise<AppServices> {
   });
 
   return {
-    archive: new ArchiveService({ files, tags }),
+    archive: new ArchiveService({ files, tags, store }),
+    search: new SearchService({ files, tags }),
+    tags: new TagService({ tags, newId: randomUUID, now: Date.now }),
     importer: new ImportService({ store, files, archiveLock, newId: randomUUID, now: Date.now }),
-    pickFiles: pickImportSources,
+    pickFiles: async () => {
+      await reconciliation;
+      return pickImportSources();
+    },
     reconciliation,
   };
 }

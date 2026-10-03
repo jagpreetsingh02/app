@@ -33,6 +33,16 @@ export interface FileStore {
   /** Copies an absolute source URI to a relative destination (overwriting). */
   copyIn(sourceUri: string, destPath: string): Promise<void>;
 
+  /**
+   * Deletes the temporary copy the document picker made in the app cache.
+   * A no-op for any URI outside the picker's cache folder, so this call can
+   * never delete a user's original file.
+   */
+  releaseSource(sourceUri: string): Promise<void>;
+
+  /** Empties the picker's cache folder (startup cleanup). Returns files removed. */
+  clearPickerCache(): Promise<number>;
+
   /** Same contract as statSource, for a path inside app storage. */
   stat(path: string): Promise<FileStat>;
 

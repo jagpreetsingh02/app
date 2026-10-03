@@ -1,4 +1,5 @@
-import type { ArchiveFile, FileCategory, FileStatus } from '../domain/types';
+import type { ArchiveFile, ArchiveQuery, FileCategory, FileStatus } from '../domain/types';
+import { FILE_COLUMNS, buildSearchQuery } from './searchQuery';
 import type { SqlDatabase, SqlParam } from './SqlDatabase';
 
 /** Persistence for archive entries. All SQL for the `files` table lives here. */
@@ -10,9 +11,14 @@ export interface FileRepository {
   findByHash(contentHash: string, sizeBytes: number): Promise<ArchiveFile | null>;
   /** Every storage path the DB knows about (used by reconciliation). */
   listStoragePaths(): Promise<string[]>;
-  /** Newest first. Full search/filtering arrives with SearchService. */
+  /** Newest first. */
   listAll(): Promise<ArchiveFile[]>;
-  delete(id: string): Promise<void>;
+  /** Text / category / status / tag filters and sorting, all in SQL. */
+  search(query: ArchiveQuery): Promise<ArchiveFile[]>;
+  /** Changes only the user-facing name; the stored file is untouched. */
+  rename(id: string, displayName: string): Promise<boolean>;
+  /** Returns whether a row was deleted. */
+  delete(id: string): Promise<boolean>;
 }
 
 interface FileRow {
@@ -30,11 +36,6 @@ interface FileRow {
   status: FileStatus;
   status_checked_at: number | null;
 }
-
-export const FILE_COLUMNS = `
-  f.id, f.display_name, f.original_name, f.mime_type, f.category, f.size_bytes,
-  f.imported_at, f.source_modified_at, f.last_known_modified_at, f.storage_path,
-  f.content_hash, f.status, f.status_checked_at`;
 
 export function rowToFile(row: FileRow): ArchiveFile {
   return {
@@ -112,8 +113,20 @@ export class SqliteFileRepository implements FileRepository {
     return rows.map(rowToFile);
   }
 
-  async delete(id: string): Promise<void> {
+  async search(query: ArchiveQuery): Promise<ArchiveFile[]> {
+    const { sql, params } = buildSearchQuery(query);
+    const rows = await this.db.getAll<FileRow>(sql, params);
+    return rows.map(rowToFile);
+  }
+
+  async rename(id: string, displayName: string): Promise<boolean> {
+    const result = await this.db.run('UPDATE files SET display_name = ? WHERE id = ?', [displayName, id]);
+    return result.changes > 0;
+  }
+
+  async delete(id: string): Promise<boolean> {
     // file_tags rows go with it via ON DELETE CASCADE.
-    await this.db.run('DELETE FROM files WHERE id = ?', [id]);
+    const result = await this.db.run('DELETE FROM files WHERE id = ?', [id]);
+    return result.changes > 0;
   }
 }

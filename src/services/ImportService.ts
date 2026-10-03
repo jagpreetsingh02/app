@@ -78,7 +78,32 @@ export class ImportService {
     });
   }
 
+  /**
+   * Deletes the picker's temporary copies (used for duplicates the user did
+   * not keep). Never touches the user's original files.
+   */
+  async releaseSources(sources: readonly ImportSource[]): Promise<void> {
+    for (const source of sources) await safeRelease(this.deps.store, source);
+  }
+
   private async importOne(
+    source: ImportSource,
+    index: number,
+    token: CancelToken,
+    crash: { happened: boolean },
+    commitLock: Mutex,
+    options: ImportOptions,
+  ): Promise<ImportOutcome> {
+    const outcome = await this.runPipeline(source, index, token, crash, commitLock, options);
+    // The picker's cache copy is no longer needed once the file has a final
+    // outcome. Duplicates keep theirs so "Keep anyway" can still import it.
+    // (A simulated crash throws past this line, like a real crash would;
+    // startup cleanup clears the picker cache.)
+    if (outcome.kind !== 'duplicate') await safeRelease(this.deps.store, source);
+    return outcome;
+  }
+
+  private async runPipeline(
     source: ImportSource,
     index: number,
     token: CancelToken,
@@ -221,6 +246,14 @@ async function step<T>(code: ImportErrorCode, message: string, work: () => Promi
   } catch (err) {
     if (err instanceof ImportError || err instanceof CancelledError) throw err;
     throw new ImportError(code, `${message}: ${errorMessage(err)}`, { cause: err });
+  }
+}
+
+async function safeRelease(store: FileStore, source: ImportSource): Promise<void> {
+  try {
+    await store.releaseSource(source.uri);
+  } catch {
+    // Only a cache file; the OS or the next startup cleanup will reclaim it.
   }
 }
 

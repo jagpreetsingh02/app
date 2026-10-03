@@ -1,5 +1,5 @@
 import type { FileRepository } from '../../src/data/FileRepository';
-import type { ArchiveFile } from '../../src/domain/types';
+import type { ArchiveFile, ArchiveQuery } from '../../src/domain/types';
 
 /**
  * Decorates a real FileRepository (SQLite via node:sqlite) and fails `insert`
@@ -25,6 +25,12 @@ export class FlakyFileRepository implements FileRepository {
   }
   listAll() {
     return this.inner.listAll();
+  }
+  search(query: ArchiveQuery) {
+    return this.inner.search(query);
+  }
+  rename(id: string, name: string) {
+    return this.inner.rename(id, name);
   }
   delete(id: string) {
     return this.inner.delete(id);

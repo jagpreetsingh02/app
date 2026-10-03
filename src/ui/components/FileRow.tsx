@@ -1,34 +1,48 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { ArchiveFileWithTags } from '../../domain/types';
-import { CATEGORY_ICON, CATEGORY_LABEL, formatBytes, formatDate } from '../format';
+import { CATEGORY_LABEL, formatBytes, formatDate } from '../format';
 import { radius, spacing, type, useTheme } from '../theme/theme';
+import { TagPills } from './Chip';
+import { FileThumb } from './FileThumb';
+import { STATUS_LABEL, StatusBadge } from './StatusBadge';
 
 export const FileRow = memo(function FileRow({
   file,
   onPress,
 }: {
   file: ArchiveFileWithTags;
-  onPress?: (file: ArchiveFileWithTags) => void;
+  onPress: (file: ArchiveFileWithTags) => void;
 }) {
   const { colors } = useTheme();
   const meta = `${CATEGORY_LABEL[file.category]} · ${formatBytes(file.sizeBytes)} · ${formatDate(file.importedAt)}`;
+  const flagged = file.status !== 'available';
+  const tagNames = file.tags.map((t) => t.name);
 
   return (
     <Pressable
-      onPress={() => onPress?.(file)}
+      onPress={() => onPress(file)}
       accessibilityRole="button"
-      accessibilityLabel={`${file.displayName}, ${meta}`}
+      accessibilityLabel={[
+        file.displayName,
+        meta,
+        flagged ? `Warning: ${STATUS_LABEL[file.status]}` : null,
+        tagNames.length ? `Tags: ${tagNames.join(', ')}` : null,
+      ]
+        .filter(Boolean)
+        .join('. ')}
+      accessibilityHint="Opens details"
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderColor: colors.border },
+        {
+          backgroundColor: pressed ? colors.surfaceAlt : colors.surface,
+          borderColor: flagged ? (file.status === 'missing' ? colors.danger : colors.warning) : colors.border,
+          borderWidth: flagged ? 1 : StyleSheet.hairlineWidth,
+        },
       ]}
     >
-      <View style={[styles.icon, { backgroundColor: colors.accentSoft }]}>
-        <Ionicons name={CATEGORY_ICON[file.category]} size={22} color={colors.accent} />
-      </View>
+      <FileThumb file={file} />
       <View style={styles.body}>
         <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
           {file.displayName}
@@ -36,6 +50,12 @@ export const FileRow = memo(function FileRow({
         <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>
           {meta}
         </Text>
+        {flagged || tagNames.length > 0 ? (
+          <View style={styles.extras}>
+            <StatusBadge status={file.status} />
+            <TagPills names={tagNames} />
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -48,9 +68,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    minHeight: 64,
+    minHeight: 68,
   },
-  icon: { width: 44, height: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  body: { flex: 1, gap: 2 },
+  body: { flex: 1, gap: 3 },
+  extras: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', marginTop: 2 },
 });

@@ -2,7 +2,10 @@ import { createHash } from 'node:crypto';
 
 import type { FileStat, FileStore } from '../../src/storage/FileStore';
 
-type Op = 'statSource' | 'copyIn' | 'stat' | 'move' | 'remove' | 'list' | 'hash' | 'probeReadable';
+type Op = 'statSource' | 'copyIn' | 'stat' | 'move' | 'remove' | 'list' | 'hash' | 'probeReadable' | 'releaseSource';
+
+/** Picked files live here, mirroring the picker's cache folder on Android. */
+export const PICKER_CACHE = 'file:///picker-cache/';
 
 /**
  * In-memory FileStore with failure injection.
@@ -52,6 +55,21 @@ export class MemoryFileStore implements FileStore {
     this.enter('copyIn', uri);
     if (!bytes) throw new Error(`ENOENT ${uri}`);
     this.files.set(dest, { bytes: bytes.slice(), modifiedAt: this.clock++ });
+  }
+
+  async releaseSource(uri: string): Promise<void> {
+    this.enter('releaseSource', uri);
+    if (uri.startsWith(PICKER_CACHE)) this.sources.delete(uri);
+  }
+
+  async clearPickerCache(): Promise<number> {
+    const cached = [...this.sources.keys()].filter((uri) => uri.startsWith(PICKER_CACHE));
+    cached.forEach((uri) => this.sources.delete(uri));
+    return cached.length;
+  }
+
+  pickerCacheUris(): string[] {
+    return [...this.sources.keys()].filter((uri) => uri.startsWith(PICKER_CACHE)).sort();
   }
 
   async stat(path: string): Promise<FileStat> {

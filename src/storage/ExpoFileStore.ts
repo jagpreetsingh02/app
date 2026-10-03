@@ -37,6 +37,28 @@ export class ExpoFileStore implements FileStore {
     await new File(sourceUri).copy(this.file(destPath), { overwrite: true });
   }
 
+  async releaseSource(sourceUri: string): Promise<void> {
+    const file = new File(sourceUri);
+    if (!isDirectChild(file.uri, pickerCacheDirectory().uri)) return;
+    if (file.exists) file.delete();
+  }
+
+  async clearPickerCache(): Promise<number> {
+    const dir = pickerCacheDirectory();
+    if (!dir.exists) return 0;
+    let removed = 0;
+    for (const entry of dir.list()) {
+      if (!(entry instanceof File)) continue;
+      try {
+        entry.delete();
+        removed++;
+      } catch {
+        // Locked or already gone; the OS may also clear the cache itself.
+      }
+    }
+    return removed;
+  }
+
   async stat(path: string): Promise<FileStat> {
     return statFile(this.file(path));
   }
@@ -95,6 +117,24 @@ export class ExpoFileStore implements FileStore {
   toUri(path: string): string {
     return this.file(path).uri;
   }
+}
+
+/**
+ * Where expo-document-picker puts its copies when copyToCacheDirectory is
+ * true (Android: <cacheDir>/DocumentPicker, see DocumentPickerModule.kt).
+ */
+function pickerCacheDirectory(): Directory {
+  return new Directory(Paths.cache, 'DocumentPicker');
+}
+
+/** True if `fileUri` sits directly inside `dirUri` (no traversal, no subfolders). */
+function isDirectChild(fileUri: string, dirUri: string): boolean {
+  const normalize = (uri: string) => decodeURIComponent(uri).replace(/\/+$/, '');
+  const file = normalize(fileUri);
+  const dir = `${normalize(dirUri)}/`;
+  if (!file.startsWith(dir)) return false;
+  const rest = file.slice(dir.length);
+  return rest.length > 0 && !rest.includes('/') && rest !== '..';
 }
 
 function splitPath(path: string): string[] {

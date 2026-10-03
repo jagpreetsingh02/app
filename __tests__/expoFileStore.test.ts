@@ -5,20 +5,34 @@
  * "file does not exist", which hid the real cause of failed imports.
  */
 const mockInfo = jest.fn();
+const mockDelete = jest.fn();
 
 jest.mock('expo-crypto', () => ({ digest: jest.fn(), CryptoDigestAlgorithm: { SHA256: 'SHA-256' } }));
 jest.mock('expo-file-system', () => {
   class File {
     uri: string;
     constructor(...parts: unknown[]) {
-      this.uri = parts.map((p) => (typeof p === 'string' ? p : (p as { uri: string }).uri)).join('/');
+      this.uri = parts
+        .map((p) => (typeof p === 'string' ? p : (p as { uri: string }).uri).replace(/\/+$/, ''))
+        .join('/');
     }
     info() {
       return mockInfo(this.uri);
     }
+    get exists() {
+      return true;
+    }
+    delete() {
+      mockDelete(this.uri);
+    }
   }
   class Directory extends File {}
-  return { File, Directory, Paths: { document: { uri: 'file:///docs' } }, FileMode: { ReadOnly: 'r' } };
+  return {
+    File,
+    Directory,
+    Paths: { document: { uri: 'file:///data/app/files/' }, cache: { uri: 'file:///data/app/cache/' } },
+    FileMode: { ReadOnly: 'r' },
+  };
 });
 
 import { ExpoFileStore } from '../src/storage/ExpoFileStore';
@@ -45,5 +59,25 @@ describe('ExpoFileStore.stat / statSource', () => {
       throw new Error("Missing 'READ' permission for accessing the file");
     });
     await expect(new ExpoFileStore().statSource('file:///cache/a.pdf')).rejects.toThrow(/READ' permission/);
+  });
+});
+
+describe('ExpoFileStore.releaseSource', () => {
+  beforeEach(() => mockDelete.mockReset());
+
+  it('deletes a picker copy in the cache folder', async () => {
+    await new ExpoFileStore().releaseSource('file:///data/app/cache/DocumentPicker/1b2c.pdf');
+    expect(mockDelete).toHaveBeenCalledWith('file:///data/app/cache/DocumentPicker/1b2c.pdf');
+  });
+
+  it.each([
+    ['a user file elsewhere on the device', 'file:///storage/emulated/0/Download/report.pdf'],
+    ['an archived file', 'file:///data/app/files/archive/x.pdf'],
+    ['a path escaping the cache folder', 'file:///data/app/cache/DocumentPicker/../../files/archive/x.pdf'],
+    ['a nested folder', 'file:///data/app/cache/DocumentPicker/sub/x.pdf'],
+    ['the folder itself', 'file:///data/app/cache/DocumentPicker/'],
+  ])('never deletes %s', async (_label, uri) => {
+    await new ExpoFileStore().releaseSource(uri);
+    expect(mockDelete).not.toHaveBeenCalled();
   });
 });

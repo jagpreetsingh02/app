@@ -5,6 +5,7 @@ import type { Mutex } from './concurrency';
 export interface ReconciliationReport {
   stagingRemoved: number;
   orphansRemoved: number;
+  pickerCacheCleared: number;
 }
 
 /**
@@ -13,6 +14,8 @@ export interface ReconciliationReport {
  * - Everything in archive/.staging/ is an interrupted copy → delete it.
  * - A file in archive/ without a DB row means the app died between the move
  *   (step 5) and the insert (step 6) → delete it.
+ * - Copies the document picker left in the app cache are temporary and are
+ *   deleted (the user's originals are never in that folder).
  *
  * It only looks at the app's own folders. It never rescans the device and
  * never creates DB rows: the database is the source of truth for what is in
@@ -40,7 +43,9 @@ export class ReconciliationService {
         if (!known.has(path) && (await tryRemove(store, path))) orphansRemoved++;
       }
 
-      return { stagingRemoved, orphansRemoved };
+      const pickerCacheCleared = await store.clearPickerCache().catch(() => 0);
+
+      return { stagingRemoved, orphansRemoved, pickerCacheCleared };
     });
   }
 }

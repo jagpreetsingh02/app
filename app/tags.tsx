@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../src/ui/screens/PlaceholderScreen';
+import { TagsScreen } from '../src/ui/screens/TagsScreen';
 
 export default function TagsRoute() {
-  return <PlaceholderScreen title="Tags" body="Create and delete tags (phase 3)." />;
+  return <TagsScreen />;
 }

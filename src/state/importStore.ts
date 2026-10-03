@@ -4,6 +4,7 @@ import { SimulatedCrashError, errorMessage } from '../domain/errors';
 import type { ImportOutcome, ImportSource, ImportStep, ImportSummary } from '../domain/types';
 import { CancelToken } from '../services/concurrency';
 import { summarize, type ImportService } from '../services/ImportService';
+import { notifyArchiveChanged } from './archiveStore';
 
 export interface ImportItemView {
   index: number;
@@ -20,13 +21,12 @@ interface ImportState {
   /** Set when the run itself aborted (only the debug crash simulation). */
   fatalError: string | null;
   cancelRequested: boolean;
-  /** Incremented whenever archive contents change, so lists know to reload. */
-  archiveVersion: number;
 
   start(importer: ImportService, sources: ImportSource[], options?: { simulateCrash?: boolean }): Promise<void>;
   cancel(): void;
   keepDuplicate(importer: ImportService, index: number): Promise<void>;
-  dismiss(): void;
+  /** Closes the sheet and deletes the picker copies of duplicates not kept. */
+  dismiss(importer: ImportService): void;
 }
 
 // Not part of the rendered state; only the running import needs it.
@@ -38,7 +38,6 @@ export const useImportStore = create<ImportState>((set, get) => ({
   summary: null,
   fatalError: null,
   cancelRequested: false,
-  archiveVersion: 0,
 
   async start(importer, sources, options = {}) {
     if (get().phase === 'running') return;
@@ -62,14 +61,15 @@ export const useImportStore = create<ImportState>((set, get) => ({
         phase: 'finished',
         summary,
         items: state.items.map((item) => ({ ...item, step: 'done', outcome: summary.results[item.index].outcome })),
-        archiveVersion: state.archiveVersion + 1,
       }));
+      notifyArchiveChanged();
     } catch (err) {
       const message =
         err instanceof SimulatedCrashError
           ? 'Simulated crash: the import stopped between saving the file and recording it. Restart the app; startup cleanup will remove the orphaned file.'
           : errorMessage(err);
-      set((state) => ({ phase: 'finished', fatalError: message, archiveVersion: state.archiveVersion + 1 }));
+      set({ phase: 'finished', fatalError: message });
+      notifyArchiveChanged();
     } finally {
       activeToken = null;
     }
@@ -100,9 +100,9 @@ export const useImportStore = create<ImportState>((set, get) => ({
       updateItem(set, index, { step: 'done', outcome: { kind: 'failed', code: 'UNKNOWN', reason: errorMessage(err) } });
     } finally {
       activeToken = null;
+      notifyArchiveChanged();
       set((state) => ({
         phase: 'finished',
-        archiveVersion: state.archiveVersion + 1,
         summary: summarize(
           state.items.map((i) => ({ index: i.index, name: i.name, outcome: i.outcome ?? { kind: 'cancelled' } })),
           state.summary?.wasCancelled ?? false,
@@ -111,8 +111,12 @@ export const useImportStore = create<ImportState>((set, get) => ({
     }
   },
 
-  dismiss() {
+  dismiss(importer) {
     if (get().phase === 'running') return;
+    const unkept = get()
+      .items.map((item) => item.outcome)
+      .flatMap((outcome) => (outcome?.kind === 'duplicate' ? [outcome.source] : []));
+    void importer.releaseSources(unkept);
     set({ phase: 'idle', items: [], summary: null, fatalError: null, cancelRequested: false });
   },
 }));

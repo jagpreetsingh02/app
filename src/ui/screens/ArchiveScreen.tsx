@@ -1,40 +1,53 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorMessage } from '../../domain/errors';
-import type { ArchiveFileWithTags } from '../../domain/types';
+import { FILE_CATEGORIES, FILE_STATUSES, type ArchiveFileWithTags, type FileCategory } from '../../domain/types';
+import { useArchiveVersion } from '../../state/archiveStore';
+import { SORT_OPTIONS, hasActiveFilters, toArchiveQuery, useFilterStore } from '../../state/filterStore';
 import { useImportStore } from '../../state/importStore';
+import { Button } from '../components/Button';
+import { Chip } from '../components/Chip';
 import { FileRow } from '../components/FileRow';
 import { ImportSheet } from '../components/ImportSheet';
+import { OptionSheet } from '../components/OptionSheet';
+import { STATUS_LABEL } from '../components/StatusBadge';
+import { CATEGORY_ICON } from '../format';
+import { useDebounced, useLoader } from '../hooks';
 import { useServices } from '../ServicesProvider';
 import { radius, spacing, type, useTheme, TOUCH_TARGET } from '../theme/theme';
+
+const CATEGORY_CHIP_LABEL: Record<FileCategory, string> = {
+  image: 'Images',
+  pdf: 'PDFs',
+  document: 'Documents',
+  other: 'Other',
+};
 
 export function ArchiveScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const services = useServices();
-  const archiveVersion = useImportStore((s) => s.archiveVersion);
+  const version = useArchiveVersion((s) => s.version);
   const importing = useImportStore((s) => s.phase === 'running');
   const startImport = useImportStore((s) => s.start);
+  const filters = useFilterStore();
+  const [sortOpen, setSortOpen] = useState(false);
 
-  const [files, setFiles] = useState<ArchiveFileWithTags[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // Debounce typing so we query SQLite once the user pauses, not per keystroke.
+  const debouncedText = useDebounced(filters.text, 250);
+  const query = toArchiveQuery(filters, debouncedText);
+  const result = useLoader(
+    () => services.search.search(query),
+    [services, version, debouncedText, filters.categories, filters.statuses, filters.tag, filters.sort],
+  );
+  const files = result.data;
+  const filtered = hasActiveFilters(filters);
 
-  const load = useCallback(async () => {
-    try {
-      setFiles(await services.archive.listAll());
-      setLoadError(null);
-    } catch (err) {
-      setLoadError(errorMessage(err));
-    }
-  }, [services]);
-
-  // Reload whenever an import (or later: rename/remove) changed the archive.
-  useEffect(() => {
-    void load();
-  }, [load, archiveVersion]);
+  const openFile = useCallback((file: ArchiveFileWithTags) => router.push(`/file/${file.id}`), []);
 
   const onImport = async () => {
     try {
@@ -47,20 +60,91 @@ export function ArchiveScreen() {
 
   return (
     <View style={styles.container}>
-      {files === null && !loadError ? (
+      <View style={styles.searchRow}>
+        <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            value={filters.text}
+            onChangeText={filters.setText}
+            placeholder="Search names and tags"
+            placeholderTextColor={colors.textMuted}
+            style={[type.body, styles.searchInput, { color: colors.text }]}
+            returnKeyType="search"
+            autoCorrect={false}
+            accessibilityLabel="Search by file name or tag"
+          />
+          {filters.text ? (
+            <Pressable onPress={() => filters.setText('')} hitSlop={10} accessibilityLabel="Clear search">
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+        <Pressable
+          onPress={() => setSortOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Sort: ${filters.sort.label}`}
+          style={[styles.sortButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <Ionicons name="swap-vertical" size={20} color={colors.text} />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chips}
+        style={styles.chipScroller}
+      >
+        {FILE_CATEGORIES.map((category) => (
+          <Chip
+            key={category}
+            label={CATEGORY_CHIP_LABEL[category]}
+            icon={CATEGORY_ICON[category]}
+            selected={filters.categories.includes(category)}
+            onPress={() => filters.toggleCategory(category)}
+          />
+        ))}
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        {FILE_STATUSES.map((status) => (
+          <Chip
+            key={status}
+            label={STATUS_LABEL[status]}
+            selected={filters.statuses.includes(status)}
+            onPress={() => filters.toggleStatus(status)}
+          />
+        ))}
+      </ScrollView>
+
+      <View style={styles.summary}>
+        <Text style={[type.caption, styles.summaryText, { color: colors.textMuted }]} accessibilityLiveRegion="polite">
+          {files ? `${files.length} ${files.length === 1 ? 'file' : 'files'}` : ' '} · {filters.sort.label}
+        </Text>
+        {filters.tag ? <Chip label={`#${filters.tag.name}`} onRemove={() => filters.setTag(null)} /> : null}
+        {filtered ? (
+          <Pressable onPress={filters.clear} hitSlop={8} accessibilityRole="button">
+            <Text style={[type.label, { color: colors.accent }]}>Clear filters</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {files === null && result.kind !== 'error' ? (
         <ActivityIndicator style={styles.center} color={colors.accent} accessibilityLabel="Loading archive" />
-      ) : loadError ? (
+      ) : result.kind === 'error' && !files ? (
         <View style={styles.center}>
-          <Text style={[type.body, { color: colors.danger }]}>Could not load the archive: {loadError}</Text>
+          <Text style={[type.body, { color: colors.danger, textAlign: 'center' }]}>
+            Could not load the archive: {result.message}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={files}
+          data={files ?? []}
           keyExtractor={(f) => f.id}
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 96 }]}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-          renderItem={({ item }) => <FileRow file={item} />}
-          ListEmptyComponent={<EmptyState />}
+          ItemSeparatorComponent={Separator}
+          renderItem={({ item }) => <FileRow file={item} onPress={openFile} />}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          ListEmptyComponent={filtered ? <NoResults onClear={filters.clear} /> : <EmptyArchive />}
         />
       )}
 
@@ -83,12 +167,26 @@ export function ArchiveScreen() {
         <Text style={[type.bodyStrong, { color: colors.onAccent }]}>Import</Text>
       </Pressable>
 
+      <OptionSheet
+        visible={sortOpen}
+        title="Sort by"
+        options={SORT_OPTIONS}
+        selected={filters.sort}
+        getLabel={(o) => o.label}
+        isSame={(a, b) => a.field === b.field && a.direction === b.direction}
+        onSelect={filters.setSort}
+        onClose={() => setSortOpen(false)}
+      />
       <ImportSheet />
     </View>
   );
 }
 
-function EmptyState() {
+function Separator() {
+  return <View style={{ height: spacing.sm }} />;
+}
+
+function EmptyArchive() {
   const { colors } = useTheme();
   return (
     <View style={styles.empty}>
@@ -104,10 +202,55 @@ function EmptyState() {
   );
 }
 
+function NoResults({ onClear }: { onClear: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.empty}>
+      <Ionicons name="search-outline" size={32} color={colors.textMuted} />
+      <Text style={[type.heading, { color: colors.text }]}>No matching files</Text>
+      <Text style={[type.body, styles.emptyBody, { color: colors.textMuted }]}>
+        Try a different name or tag, or remove some filters.
+      </Text>
+      <Button label="Clear filters" variant="secondary" onPress={onClear} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  list: { padding: spacing.lg, flexGrow: 1 },
+  searchRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  search: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: TOUCH_TARGET,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+  },
+  searchInput: { flex: 1, paddingVertical: spacing.sm },
+  sortButton: {
+    width: TOUCH_TARGET,
+    height: TOUCH_TARGET,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipScroller: { flexGrow: 0 },
+  chips: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, alignItems: 'center' },
+  divider: { width: 1, height: 24, marginHorizontal: spacing.xs },
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 36,
+  },
+  summaryText: { flex: 1 },
+  list: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, flexGrow: 1 },
   fab: {
     position: 'absolute',
     right: spacing.xl,
@@ -124,7 +267,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.xl },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.xxl },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
   emptyBody: { textAlign: 'center' },
 });
