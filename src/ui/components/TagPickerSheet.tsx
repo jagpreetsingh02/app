@@ -80,7 +80,7 @@ export function TagPickerSheet({
             <Text style={[type.heading, styles.title, { color: colors.text }]} accessibilityRole="header">
               Tags
             </Text>
-            <Pressable onPress={close} hitSlop={10} accessibilityRole="button" accessibilityLabel="Done">
+            <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Done" style={styles.done}>
               <Text style={[type.bodyStrong, { color: colors.accent }]}>Done</Text>
             </Pressable>
           </View>
@@ -164,6 +164,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   header: { flexDirection: 'row', alignItems: 'center' },
+  done: { minHeight: TOUCH_TARGET, minWidth: TOUCH_TARGET, alignItems: 'flex-end', justifyContent: 'center' },
   title: { flex: 1 },
   input: { minHeight: TOUCH_TARGET, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.md },
   list: { flexGrow: 0 },

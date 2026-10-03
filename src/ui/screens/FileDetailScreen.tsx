@@ -12,6 +12,7 @@ import { Chip } from '../components/Chip';
 import { FileThumb } from '../components/FileThumb';
 import { PromptDialog } from '../components/PromptDialog';
 import { STATUS_LABEL, StatusBadge } from '../components/StatusBadge';
+import { StateView } from '../components/StateView';
 import { TagPickerSheet } from '../components/TagPickerSheet';
 import { CATEGORY_LABEL, formatBytes } from '../format';
 import { useLoader } from '../hooks';
@@ -41,14 +42,21 @@ export function FileDetailScreen({ id }: { id: string }) {
     if (detail.kind === 'loading') {
       return <ActivityIndicator style={styles.center} color={colors.accent} accessibilityLabel="Loading" />;
     }
-    return (
-      <View style={[styles.center, { gap: spacing.lg }]}>
-        <Text style={[type.heading, { color: colors.text }]}>
-          {detail.kind === 'error' ? 'Could not load this entry' : 'This entry is no longer in the archive'}
-        </Text>
-        {detail.kind === 'error' ? <Text style={[type.body, { color: colors.textMuted }]}>{detail.message}</Text> : null}
-        <Button label="Back to archive" variant="secondary" onPress={() => router.back()} />
-      </View>
+    return detail.kind === 'error' ? (
+      <StateView
+        icon="cloud-offline-outline"
+        tone="danger"
+        title="Couldn’t load this entry"
+        body={detail.message}
+        action={{ label: 'Try again', icon: 'refresh', onPress: detail.reload }}
+      />
+    ) : (
+      <StateView
+        icon="file-tray-outline"
+        title="This entry is no longer in the archive"
+        body="It may have been removed."
+        action={{ label: 'Back to archive', onPress: () => router.back() }}
+      />
     );
   }
 

@@ -171,7 +171,12 @@ function ImportItemRow({
       ) : null}
       <Text style={[type.caption, { color: detailColor }]}>{detail}</Text>
       {outcome?.kind === 'duplicate' && canKeep ? (
-        <Pressable onPress={onKeep} accessibilityRole="button" hitSlop={8} style={styles.keep}>
+        <Pressable
+          onPress={onKeep}
+          accessibilityRole="button"
+          accessibilityHint="Imports this file as a separate entry"
+          style={styles.keep}
+        >
           <Text style={[type.label, { color: colors.accent }]}>Keep anyway</Text>
         </Pressable>
       ) : null}
@@ -199,7 +204,7 @@ const styles = StyleSheet.create({
   itemName: { flex: 1 },
   track: { height: 4, borderRadius: 2, overflow: 'hidden' },
   fill: { height: 4, borderRadius: 2 },
-  keep: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' },
+  keep: { alignSelf: 'flex-start', minHeight: TOUCH_TARGET, justifyContent: 'center' },
   button: {
     minHeight: TOUCH_TARGET,
     borderRadius: radius.md,

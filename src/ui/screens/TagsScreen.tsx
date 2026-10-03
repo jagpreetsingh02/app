@@ -1,7 +1,6 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorMessage } from '../../domain/errors';
@@ -10,6 +9,8 @@ import { MAX_TAG_LENGTH } from '../../services/TagService';
 import { notifyArchiveChanged, useArchiveVersion } from '../../state/archiveStore';
 import { useFilterStore } from '../../state/filterStore';
 import { Button } from '../components/Button';
+import { IconButton } from '../components/IconButton';
+import { StateView } from '../components/StateView';
 import { useLoader } from '../hooks';
 import { useServices } from '../ServicesProvider';
 import { radius, spacing, type, useTheme, TOUCH_TARGET } from '../theme/theme';
@@ -99,14 +100,23 @@ export function TagsScreen() {
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + spacing.xl }]}
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         ListEmptyComponent={
-          list.kind === 'loading' ? null : (
-            <View style={styles.empty}>
-              <Ionicons name="pricetags-outline" size={32} color={colors.textMuted} />
-              <Text style={[type.heading, { color: colors.text }]}>No tags yet</Text>
-              <Text style={[type.body, styles.emptyBody, { color: colors.textMuted }]}>
-                Create tags here or from a file’s detail screen, then search or filter by them.
-              </Text>
-            </View>
+          list.kind === 'loading' ? (
+            <ActivityIndicator style={styles.loading} color={colors.accent} accessibilityLabel="Loading tags" />
+          ) : list.kind === 'error' ? (
+            <StateView
+              icon="cloud-offline-outline"
+              tone="danger"
+              title="Couldn’t load tags"
+              body={list.message}
+              action={{ label: 'Try again', icon: 'refresh', onPress: list.reload }}
+            />
+          ) : (
+            <StateView
+              icon="pricetags-outline"
+              tone="accent"
+              title="No tags yet"
+              body="Create tags here or from a file’s detail screen, then search or filter by them."
+            />
           )
         }
         renderItem={({ item }) => (
@@ -125,15 +135,9 @@ export function TagsScreen() {
                 {item.fileCount} {item.fileCount === 1 ? 'file' : 'files'}
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => confirmDelete(item)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={`Delete tag ${item.name}`}
-              style={styles.delete}
-            >
-              <Ionicons name="trash-outline" size={20} color={colors.danger} />
-            </Pressable>
+            <View style={styles.delete}>
+              <IconButton icon="trash-outline" size={20} color={colors.danger} label={`Delete tag ${item.name}`} onPress={() => confirmDelete(item)} />
+            </View>
           </View>
         )}
       />
@@ -155,7 +159,6 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.lg,
   },
   rowMain: { flex: 1, minHeight: 60, justifyContent: 'center', gap: 2 },
-  delete: { width: TOUCH_TARGET + 8, height: 60, alignItems: 'center', justifyContent: 'center' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.xl },
-  emptyBody: { textAlign: 'center' },
+  delete: { paddingHorizontal: spacing.xs },
+  loading: { marginTop: spacing.xxl },
 });

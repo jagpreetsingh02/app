@@ -9,6 +9,7 @@ import { useArchiveVersion } from '../../state/archiveStore';
 import { useAvailabilityStore } from '../../state/availabilityStore';
 import { Button } from '../components/Button';
 import { FileRow } from '../components/FileRow';
+import { StateView } from '../components/StateView';
 import { useLoader } from '../hooks';
 import { useServices } from '../ServicesProvider';
 import { radius, spacing, type, useTheme } from '../theme/theme';
@@ -88,7 +89,15 @@ export function IntegrityScreen() {
       ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
       renderItem={({ item }) => <FileRow file={item} onPress={openFile} />}
       ListEmptyComponent={
-        problems.kind === 'loading' ? null : (
+        problems.kind === 'loading' ? null : problems.kind === 'error' ? (
+          <StateView
+            icon="cloud-offline-outline"
+            tone="danger"
+            title="Couldn’t load the problem list"
+            body={problems.message}
+            action={{ label: 'Try again', icon: 'refresh', onPress: problems.reload }}
+          />
+        ) : (
           <View style={[styles.healthy, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="checkmark-done-circle-outline" size={28} color={colors.success} />
             <Text style={[type.body, { color: colors.text, flex: 1 }]}>
