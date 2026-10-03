@@ -45,3 +45,7 @@ coverage/
 *.apk
 *.aab
 .env
+
+# local AI-assistant config (kept out of the submission repo)
+AGENTS.md
+.claude/
