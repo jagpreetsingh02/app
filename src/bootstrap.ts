@@ -5,7 +5,7 @@ import { openArchiveDatabase } from './data/sqlite';
 import { SqliteTagRepository } from './data/TagRepository';
 import { ArchiveService } from './services/ArchiveService';
 import { AvailabilityService } from './services/AvailabilityService';
-import { DebugService } from './services/DebugService';
+import type { DebugService } from './services/DebugService';
 import { Mutex } from './services/concurrency';
 import { ImportService } from './services/ImportService';
 import { OpenService } from './services/OpenService';
@@ -76,7 +76,8 @@ export async function createAppServices(): Promise<AppServices> {
       await reconciliation;
       return pickSingleSource();
     },
-    debug: __DEV__ ? new DebugService({ files, store }) : null,
+    // Guarded require: production bundles drop the module entirely.
+    debug: __DEV__ ? new (require('./services/DebugService').DebugService as typeof DebugService)({ files, store }) : null,
     reconciliation,
   };
 }
