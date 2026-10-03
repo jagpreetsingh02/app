@@ -19,6 +19,23 @@ export interface FileRepository {
   rename(id: string, displayName: string): Promise<boolean>;
   /** Returns whether a row was deleted. */
   delete(id: string): Promise<boolean>;
+  /**
+   * Records the result of an availability check made at `checkedAt`. Ignored
+   * if a newer check is already recorded, so a slow background scan cannot
+   * overwrite a fresher result (e.g. from a re-link). Only the status columns
+   * change; a null `lastKnownModifiedAt` keeps the previous value.
+   * Returns whether the row was updated.
+   */
+  updateStatus(update: StatusUpdate): Promise<boolean>;
+  /** Keyset pagination by id, for batched scans that never load everything. */
+  listPage(afterId: string | null, limit: number): Promise<ArchiveFile[]>;
+}
+
+export interface StatusUpdate {
+  id: string;
+  status: FileStatus;
+  checkedAt: number;
+  lastKnownModifiedAt: number | null;
 }
 
 interface FileRow {
@@ -122,6 +139,28 @@ export class SqliteFileRepository implements FileRepository {
   async rename(id: string, displayName: string): Promise<boolean> {
     const result = await this.db.run('UPDATE files SET display_name = ? WHERE id = ?', [displayName, id]);
     return result.changes > 0;
+  }
+
+  async updateStatus(update: StatusUpdate): Promise<boolean> {
+    const result = await this.db.run(
+      `UPDATE files
+       SET status = ?,
+           status_checked_at = ?,
+           last_known_modified_at = COALESCE(?, last_known_modified_at)
+       WHERE id = ? AND (status_checked_at IS NULL OR status_checked_at <= ?)`,
+      [update.status, update.checkedAt, update.lastKnownModifiedAt, update.id, update.checkedAt],
+    );
+    return result.changes > 0;
+  }
+
+  async listPage(afterId: string | null, limit: number): Promise<ArchiveFile[]> {
+    const rows = await this.db.getAll<FileRow>(
+      `SELECT ${FILE_COLUMNS} FROM files f
+       WHERE (? IS NULL OR f.id > ?)
+       ORDER BY f.id LIMIT ?`,
+      [afterId, afterId, limit],
+    );
+    return rows.map(rowToFile);
   }
 
   async delete(id: string): Promise<boolean> {

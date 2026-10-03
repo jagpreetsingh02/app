@@ -1,4 +1,4 @@
-import type { FileRepository } from '../../src/data/FileRepository';
+import type { FileRepository, StatusUpdate } from '../../src/data/FileRepository';
 import type { ArchiveFile, ArchiveQuery } from '../../src/domain/types';
 
 /**
@@ -34,5 +34,11 @@ export class FlakyFileRepository implements FileRepository {
   }
   delete(id: string) {
     return this.inner.delete(id);
+  }
+  updateStatus(update: StatusUpdate) {
+    return this.inner.updateStatus(update);
+  }
+  listPage(afterId: string | null, limit: number) {
+    return this.inner.listPage(afterId, limit);
   }
 }
