@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from '../src/ui/screens/PlaceholderScreen';
+import { IntegrityScreen } from '../src/ui/screens/IntegrityScreen';
 
 export default function IntegrityRoute() {
-  return <PlaceholderScreen title="Integrity" body="Scan the archive for missing files (phase 4)." />;
+  return <IntegrityScreen />;
 }
