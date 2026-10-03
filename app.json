@@ -34,6 +34,12 @@
     "scheme": "digitalarchive",
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "04eaa096-95af-40cd-a17c-be8d1b9dd564"
+      }
     }
   }
 }
