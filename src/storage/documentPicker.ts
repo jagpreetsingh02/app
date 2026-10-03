@@ -12,7 +12,17 @@ import type { ImportSource } from '../domain/types';
  * never opened for writing by us.
  */
 export async function pickImportSources(): Promise<ImportSource[] | null> {
-  const result = await getDocumentAsync({ multiple: true, copyToCacheDirectory: true, type: '*/*' });
+  return pick(true);
+}
+
+/** Single-file variant, used by re-link. */
+export async function pickSingleSource(): Promise<ImportSource | null> {
+  const picked = await pick(false);
+  return picked?.[0] ?? null;
+}
+
+async function pick(multiple: boolean): Promise<ImportSource[] | null> {
+  const result = await getDocumentAsync({ multiple, copyToCacheDirectory: true, type: '*/*' });
   if (result.canceled) return null;
   return result.assets.map((asset) => ({
     uri: asset.uri,

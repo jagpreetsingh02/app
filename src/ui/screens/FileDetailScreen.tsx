@@ -26,7 +26,8 @@ export const REMOVE_EXPLANATION =
 export function FileDetailScreen({ id }: { id: string }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { archive, tags, opener, availability } = useServices();
+  const services = useServices();
+  const { archive, tags, opener, availability } = services;
   const version = useArchiveVersion((s) => s.version);
   const detail = useLoader(() => archive.getDetail(id), [archive, id, version]);
   const [renaming, setRenaming] = useState(false);
@@ -34,6 +35,7 @@ export function FileDetailScreen({ id }: { id: string }) {
   const [removing, setRemoving] = useState(false);
   const [opening, setOpening] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [relinking, setRelinking] = useState(false);
 
   if (detail.data === null) {
     if (detail.kind === 'loading') {
@@ -115,6 +117,25 @@ export function FileDetailScreen({ id }: { id: string }) {
     }
   };
 
+  const relink = async () => {
+    try {
+      const source = await services.pickFile();
+      if (!source) return;
+      setRelinking(true);
+      const result = await services.relinker.relink(file.id, source);
+      if (result.kind === 'relinked') {
+        notifyArchiveChanged();
+        Alert.alert('File restored', `“${file.displayName}” is available again.`);
+      } else {
+        Alert.alert(result.kind === 'mismatch' ? 'Not the same file' : 'Could not re-link', result.message);
+      }
+    } catch (err) {
+      Alert.alert('Could not re-link', errorMessage(err));
+    } finally {
+      setRelinking(false);
+    }
+  };
+
   const removeTag = async (tagId: string) => {
     try {
       await tags.unassign(file.id, tagId);
@@ -159,6 +180,11 @@ export function FileDetailScreen({ id }: { id: string }) {
                 ? 'The archive’s copy of this file is missing. Its details are kept so nothing is lost.'
                 : 'The archive’s copy of this file could not be read. Its details are kept so nothing is lost.'}
             </Text>
+            <Text style={[type.caption, { color: colors.text }]}>
+              If you still have the file, pick it to restore this entry. It must be exactly the same file
+              (checked by size and content hash).
+            </Text>
+            <Button label="Re-link file" icon="link-outline" variant="secondary" onPress={relink} busy={relinking} />
           </View>
         ) : null}
 
@@ -255,7 +281,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch' },
   action: { flex: 1 },
   name: { textAlign: 'center' },
-  banner: { padding: spacing.lg, borderRadius: radius.md },
+  banner: { padding: spacing.lg, borderRadius: radius.md, gap: spacing.md },
   section: { gap: spacing.sm },
   sectionTitle: { letterSpacing: 0.6, paddingHorizontal: spacing.xs },
   card: { borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, padding: spacing.md, gap: spacing.md },

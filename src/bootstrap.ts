@@ -9,9 +9,10 @@ import { Mutex } from './services/concurrency';
 import { ImportService } from './services/ImportService';
 import { OpenService } from './services/OpenService';
 import { ReconciliationService, type ReconciliationReport } from './services/ReconciliationService';
+import { RelinkService } from './services/RelinkService';
 import { SearchService } from './services/SearchService';
 import { TagService } from './services/TagService';
-import { pickImportSources } from './storage/documentPicker';
+import { pickImportSources, pickSingleSource } from './storage/documentPicker';
 import { ExpoFileStore } from './storage/ExpoFileStore';
 import { ExpoExternalViewer } from './storage/ExternalViewer';
 import type { ImportSource } from './domain/types';
@@ -29,8 +30,10 @@ export interface AppServices {
   tags: TagService;
   importer: ImportService;
   opener: OpenService;
-  /** Waits for startup cleanup first: it empties the picker cache folder. */
+  relinker: RelinkService;
+  /** Pickers wait for startup cleanup first: it empties the picker cache folder. */
   pickFiles: () => Promise<ImportSource[] | null>;
+  pickFile: () => Promise<ImportSource | null>;
   /** Startup cleanup, started in the background; resolves when it is done. */
   reconciliation: Promise<ReconciliationReport | null>;
 }
@@ -58,12 +61,17 @@ export async function createAppServices(): Promise<AppServices> {
     archive: new ArchiveService({ files, tags, store }),
     availability,
     opener: new OpenService({ availability, viewer: new ExpoExternalViewer() }),
+    relinker: new RelinkService({ files, store, archiveLock, now: Date.now }),
     search: new SearchService({ files, tags }),
     tags: new TagService({ tags, newId: randomUUID, now: Date.now }),
     importer: new ImportService({ store, files, archiveLock, newId: randomUUID, now: Date.now }),
     pickFiles: async () => {
       await reconciliation;
       return pickImportSources();
+    },
+    pickFile: async () => {
+      await reconciliation;
+      return pickSingleSource();
     },
     reconciliation,
   };
