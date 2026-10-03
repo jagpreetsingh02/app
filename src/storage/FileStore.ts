@@ -23,12 +23,17 @@ export interface FileStore {
   /** Creates archive/ and archive/.staging/ if needed. Idempotent. */
   ensureDirectories(): Promise<void>;
 
-  /** Stats a picked file by absolute URI. Never throws for "not found". */
+  /**
+   * Stats a picked file by absolute URI. A missing file resolves with
+   * `exists: false`; any other failure (e.g. permission denied) rejects with
+   * the platform's error so it can be reported, never masked as "missing".
+   */
   statSource(sourceUri: string): Promise<FileStat>;
 
   /** Copies an absolute source URI to a relative destination (overwriting). */
   copyIn(sourceUri: string, destPath: string): Promise<void>;
 
+  /** Same contract as statSource, for a path inside app storage. */
   stat(path: string): Promise<FileStat>;
 
   /**

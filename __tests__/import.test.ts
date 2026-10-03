@@ -163,6 +163,20 @@ describe('ImportService', () => {
     expect(t.store.paths()).toEqual([]);
   });
 
+  it('a source the OS refuses to read fails cleanly and keeps the real reason', async () => {
+    const t = await setup();
+    const ok = t.source('fine.txt', 'readable');
+    t.store.failWhen.statSource = (uri) => uri !== ok.uri; // e.g. "Missing 'READ' permission"
+
+    const summary = await t.importer.importFiles([t.source('locked.pdf', 'secret'), ok]);
+
+    const failed = summary.results[0].outcome;
+    expect(failed).toMatchObject({ kind: 'failed', code: 'SOURCE_UNREADABLE' });
+    expect(failed.kind === 'failed' && failed.reason).toMatch(/could not be read: Injected statSource failure/);
+    expect(summary.results[1].outcome.kind).toBe('imported');
+    await t.expectConsistent();
+  });
+
   describe('duplicates', () => {
     it('reports a duplicate of an archived file and stores nothing new', async () => {
       const t = await setup();

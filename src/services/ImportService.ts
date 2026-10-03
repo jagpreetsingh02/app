@@ -102,9 +102,11 @@ export class ImportService {
       // 1. Validate
       checkpoint();
       progress('validating');
-      const sourceStat = await store.statSource(source.uri);
+      const sourceStat = await step('SOURCE_UNREADABLE', 'The selected file could not be read', () =>
+        store.statSource(source.uri),
+      );
       if (!sourceStat.exists) {
-        throw new ImportError('SOURCE_UNREADABLE', 'The selected file could not be read.');
+        throw new ImportError('SOURCE_UNREADABLE', 'The selected file no longer exists.');
       }
       if (sourceStat.size <= 0) {
         throw new ImportError('SOURCE_EMPTY', 'The selected file is empty.');
@@ -120,7 +122,7 @@ export class ImportService {
       // 3. Verify size, then hash the copy we now own
       checkpoint();
       progress('verifying');
-      const staged = await store.stat(stagingPath);
+      const staged = await step('COPY_FAILED', 'Could not verify the copied file', () => store.stat(stagingPath));
       if (!staged.exists || staged.size !== sourceStat.size) {
         throw new ImportError(
           'SIZE_MISMATCH',
@@ -170,7 +172,7 @@ export class ImportService {
         checkpoint();
         progress('saving');
         const now = this.deps.now();
-        const finalStat = await store.stat(target);
+        const finalStat = await step('MOVE_FAILED', 'Could not verify the archived file', () => store.stat(target));
         const file: ArchiveFile = {
           id,
           displayName: source.name,

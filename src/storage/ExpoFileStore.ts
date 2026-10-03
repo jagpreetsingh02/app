@@ -101,18 +101,17 @@ function splitPath(path: string): string[] {
   return path.split('/').filter((segment) => segment.length > 0);
 }
 
+/**
+ * "Not there" is a normal answer (exists: false). Anything else — permission
+ * denied, invalid URI, I/O error — is thrown so callers can report the real
+ * cause instead of a misleading "file not found".
+ */
 function statFile(file: File): FileStat {
-  try {
-    const info = file.info();
-    if (!info.exists) return { exists: false, size: 0, modifiedAt: null };
-    return {
-      exists: true,
-      size: info.size ?? 0,
-      modifiedAt: info.modificationTime ?? null,
-    };
-  } catch {
-    // An invalid or revoked URI is reported as "not there" rather than thrown;
-    // callers decide whether that is a failure.
-    return { exists: false, size: 0, modifiedAt: null };
-  }
+  const info = file.info();
+  if (!info.exists) return { exists: false, size: 0, modifiedAt: null };
+  return {
+    exists: true,
+    size: info.size ?? 0,
+    modifiedAt: info.modificationTime ?? null,
+  };
 }
