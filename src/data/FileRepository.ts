@@ -27,6 +27,7 @@ export interface FileRepository {
    * Returns whether the row was updated.
    */
   updateStatus(update: StatusUpdate): Promise<boolean>;
+  count(): Promise<number>;
   /** Keyset pagination by id, for batched scans that never load everything. */
   listPage(afterId: string | null, limit: number): Promise<ArchiveFile[]>;
 }
@@ -151,6 +152,11 @@ export class SqliteFileRepository implements FileRepository {
       [update.status, update.checkedAt, update.lastKnownModifiedAt, update.id, update.checkedAt],
     );
     return result.changes > 0;
+  }
+
+  async count(): Promise<number> {
+    const row = await this.db.getFirst<{ n: number }>('SELECT COUNT(*) AS n FROM files');
+    return row?.n ?? 0;
   }
 
   async listPage(afterId: string | null, limit: number): Promise<ArchiveFile[]> {

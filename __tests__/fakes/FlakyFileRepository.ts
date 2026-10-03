@@ -38,6 +38,9 @@ export class FlakyFileRepository implements FileRepository {
   updateStatus(update: StatusUpdate) {
     return this.inner.updateStatus(update);
   }
+  count() {
+    return this.inner.count();
+  }
   listPage(afterId: string | null, limit: number) {
     return this.inner.listPage(afterId, limit);
   }
