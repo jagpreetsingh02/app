@@ -54,7 +54,8 @@ export async function createAppServices(): Promise<AppServices> {
   // Not awaited: first render must not wait for disk cleanup. Imports queue
   // behind it on archiveLock, so they can never race it.
   const reconciliation = reconciler.run().catch((err: unknown) => {
-    console.warn('Startup reconciliation failed; will retry next launch', err);
+    // Dev-only: the error text can contain file paths, which production must not log.
+    if (__DEV__) console.warn('Startup reconciliation failed; will retry next launch', err);
     return null;
   });
 
