@@ -49,3 +49,23 @@ coverage/
 # local AI-assistant config (kept out of the submission repo)
 AGENTS.md
 .claude/
+
+# raw phone screenshots (only the renamed PNGs are committed)
+WhatsApp Image*
+
+# demo video: only the published video, poster and preview are tracked
+demo/*
+!demo/digital-archive-demo.mp4
+!demo/poster.png
+!demo/preview.gif
+
+# third-party guide / starter kit and video-tool working folders (never committed)
+Motion-Graphics-with-Claude-Code.pdf
+Motion-Graphics-starter-kit*.zip
+Motion-Graphics-starter-kit/
+prompts.md
+clip.mp4
+.hyperframes/
+hyperframes.json
+renders/
+snapshots/
